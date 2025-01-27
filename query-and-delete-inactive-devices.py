@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import os
 import requests
 import argparse
@@ -15,7 +13,7 @@ def view(
     offline_days=None,
 ):
     headers = {"Authorization": f"Bearer {token}"}
-    pageSize = 100  # Adjusted for large-scale device management; set according to device count
+    pageSize = 200  # Adjusted for large-scale device management; set according to device count
     params = {
         "id": id,
         "device_name": device_name,
@@ -47,9 +45,14 @@ def view(
                 continue
             last_online = datetime.strptime(
                 device["last_online"].split(".")[0], "%Y-%m-%dT%H:%M:%S"
-            )  # assuming date is in this format
-            if (datetime.utcnow() - last_online).days >= offline_days:
-                devices.append(device)
+            )
+            days_offline = (datetime.utcnow() - last_online).days
+            if days_offline >= offline_days:
+                devices.append({
+                    "name": device.get("device_name", "Unknown"),
+                    "id": device["id"],
+                    "days_offline": days_offline
+                })
 
         total = response_json.get("total", 0)
         current += pageSize
@@ -58,10 +61,14 @@ def view(
 
     return devices
 
-def delete(url, token, guid, id):
-    print("Deleting device:", id)
+def disable_device(url, token, device_id):
     headers = {"Authorization": f"Bearer {token}"}
-    response = requests.delete(f"{url}/api/devices/{guid}", headers=headers)
+    response = requests.post(f"{url}/api/devices/{device_id}/disable", headers=headers)
+    return response.status_code == 200
+
+def delete_device(url, token, device_id):
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.delete(f"{url}/api/devices/{device_id}", headers=headers)
     return response.status_code == 200
 
 def main():
@@ -101,30 +108,32 @@ def main():
     )
 
     if args.command == "view":
-        # Output devices that would be deleted
         print("Devices that would be deleted:")
         for device in devices:
-            print(device)
+            print(f"{device['name']} {device['id']} {device['days_offline']} days offline")
+
+        print(f"\nTotal devices determined to be OK to delete: {len(devices)}")
 
     elif args.command == "delete":
-        # Output and confirm deletion
-        print("Devices to be deleted:")
+        print("Devices that would be deleted:")
         for device in devices:
-            print(f"- {device.get('device_name', 'Unknown')} (ID: {device.get('id', 'Unknown')})")
+            print(f"{device['name']} {device['id']} {device['days_offline']} days offline")
 
-        print(f"\nTotal devices to delete: {len(devices)}")
-        confirm = input("Are you sure you want to delete these devices? (yes/no): ").strip().lower()
-        if confirm != "yes":
-            print("Operation cancelled.")
-            return
+        print(f"\nTotal devices determined to be OK to delete: {len(devices)}")
 
-        # Perform deletion
-        for device in devices:
-            success = delete(args.url, token, device["guid"], device["id"])
-            if success:
-                print(f"Deleted device: {device.get('device_name', 'Unknown')} (ID: {device.get('id', 'Unknown')})")
-            else:
-                print(f"Failed to delete device: {device.get('device_name', 'Unknown')} (ID: {device.get('id', 'Unknown')})")
+        confirm = input("Do you want to delete these devices? (yes/no): ").strip().lower()
+        if confirm == "yes":
+            for device in devices:
+                print(f"Disabling device: {device['name']} ({device['id']})")
+                if disable_device(args.url, token, device['id']):
+                    print(f"Device disabled: {device['name']} ({device['id']})")
+                    print(f"Deleting device: {device['name']} ({device['id']})")
+                    if delete_device(args.url, token, device['id']):
+                        print(f"Device deleted: {device['name']} ({device['id']})")
+                    else:
+                        print(f"Failed to delete device: {device['name']} ({device['id']})")
+                else:
+                    print(f"Failed to disable device: {device['name']} ({device['id']})")
 
 if __name__ == "__main__":
     main()
