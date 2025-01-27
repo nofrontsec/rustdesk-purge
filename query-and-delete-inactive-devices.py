@@ -49,7 +49,7 @@ def view(
             days_offline = (datetime.utcnow() - last_online).days
             if days_offline >= offline_days:
                 devices.append({
-                    "name": device.get("device_name", "Unknown"),
+                    "name": device.get("info", {}).get("device_name", "Unknown"),
                     "id": device["id"],
                     "days_offline": days_offline
                 })
