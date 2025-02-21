@@ -4,7 +4,8 @@ A script to clean up inactive devices from a RustDesk server. Please only execut
 
 ## Usage
 
-The script should be run on the RustDesk server itself and supports two commands: `view` and `delete`.
+The script can be run on the RustDesk server itself and supports two commands: `view` and `delete`.
+You can run the script anywhere, as long as you give it the URL to your RustDesk API.
 
 ### Viewing Devices (`view`)
 
