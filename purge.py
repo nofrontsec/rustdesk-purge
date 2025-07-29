@@ -88,7 +88,7 @@ def main():
         choices=["view", "delete"],
         help="Command to execute",
     )
-    parser.add_argument("--url", required=True, default="http://127.0.0.1:21114", help="URL of the API")
+    parser.add_argument("--url", default="http://127.0.0.1:21114", help="URL of the API")
     parser.add_argument("--id", help="Device ID")
     parser.add_argument("--device_name", help="Device name")
     parser.add_argument("--user_name", help="User name")
